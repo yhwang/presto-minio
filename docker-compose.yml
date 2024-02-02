@@ -1,27 +1,58 @@
 version: '3'
+networks:
+  presto-network:
+    driver: bridge
+
 services:
+  minio:
+    hostname: minio
+    image: 'minio/minio:latest'
+    container_name: minio-server
+    command: server --console-address ":9001" /data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    volumes:
+      - './minio-data:/data'
+    networks:
+      - presto-network
   presto:
     hostname: presto
-    image: 'starburstdata/presto:350-e.7'
+    image: 'prestodb/presto:0.286-edge13'
     container_name: presto
     ports:
       - '8080:8080'
     volumes:
-      - './presto/presto-cli-0.253-executable.jar:/usr/bin/presto'
-      - './presto/minio.properties:/usr/lib/presto/etc/catalog/minio.properties'
+      - './presto/catalog:/opt/presto-server/etc/catalog'
+    depends_on:
+      - hadoop
+    networks:
+      - presto-network
   hadoop:
     hostname: hadoop-master
-    image: 'prestodb/hive3.1-hive:5'
+    image: 'prestodb/hive3.1-hive:10'
     container_name: hadoop-master
     environment:
-      AWS_ACCESS_KEY_ID: minio
-      AWS_SECRET_ACCESS_KEY: minio123
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
     volumes:
       - './hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml'
+      - './hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml'
+      - './hadoop-dfs:/dfs'
+    depends_on:
+      - minio
+    networks:
+      - presto-network
   mc-job:
     image: 'minio/mc:latest'
     environment:
-      MC_HOST_presto: "https://minio:minio123@play.min.io"
+      MC_HOST_presto: "http://minioadmin:minioadmin@minio:9000"
+    depends_on:
+      - minio
+      - hadoop
     volumes:
       - './minio/data:/minio'
     entrypoint: |
@@ -30,3 +61,5 @@ services:
       /usr/bin/mc mb --quiet presto/customer-data-orc;
       /usr/bin/mc mirror minio/customer-data-text presto/customer-data-text;
       "
+    networks:
+      - presto-network
