@@ -13,10 +13,57 @@ services:
       - '9000:9000'
       - '9001:9001'
     environment:
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
     volumes:
       - './minio-data:/data'
+    networks:
+      - presto-network
+  mysql:
+    image: mysql
+    hostname: mysql
+    container_name: mysql
+    ports:
+      - 3306:3306  # default MySQL port
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: metastore_db
+    networks:
+      - presto-network
+  hive-metastore:
+    build: ./hive-metastore  # build custom HMS image
+    hostname: hive-metastore
+    container_name: hive-metastore
+    ports:
+      - 9083:9083  # default HMS port
+    volumes:
+      - ./hive-metastore/metastore-site.xml:/opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml:ro
+    environment:
+      DB_HOSTNAME: mysql
+    depends_on:
+      - mysql
+      - minio
+    networks:
+      - presto-network
+  mc-job:
+    image: 'minio/mc:latest'
+    environment:
+      MC_HOST_presto: "http://minioadmin:minioadmin@minio:9000"
+    depends_on:
+      - minio
+      - hive-metastore
+    volumes:
+      - './minio/data:/minio'
+    entrypoint: |
+      /bin/bash -c "
+      /usr/bin/mc mb --quiet presto/customer-data-text;
+      /usr/bin/mc mb --quiet presto/customer-data-orc;
+      /usr/bin/mc mirror minio/customer-data-text presto/customer-data-text;
+      "
     networks:
       - presto-network
   presto:
@@ -28,38 +75,9 @@ services:
     volumes:
       - './presto/catalog:/opt/presto-server/etc/catalog'
     depends_on:
-      - hadoop
+      - hive-metastore
     networks:
       - presto-network
-  hadoop:
-    hostname: hadoop-master
-    image: 'prestodb/hive3.1-hive:10'
-    container_name: hadoop-master
-    environment:
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
-    volumes:
-      - './hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml'
-      - './hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml'
-      - './hadoop-dfs:/dfs'
-    depends_on:
-      - minio
-    networks:
-      - presto-network
-  mc-job:
-    image: 'minio/mc:latest'
-    environment:
-      MC_HOST_presto: "http://minioadmin:minioadmin@minio:9000"
-    depends_on:
-      - minio
-      - hadoop
-    volumes:
-      - './minio/data:/minio'
-    entrypoint: |
-      /bin/bash -c "
-      /usr/bin/mc mb --quiet presto/customer-data-text;
-      /usr/bin/mc mb --quiet presto/customer-data-orc;
-      /usr/bin/mc mirror minio/customer-data-text presto/customer-data-text;
-      "
-    networks:
-      - presto-network
+volumes:
+  minio-data:
+  mysql-data:

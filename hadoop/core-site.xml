@@ -19,12 +19,12 @@
 
     <property>
         <name>fs.defaultFS</name>
-        <value>hdfs://hadoop-master:8020</value>
+        <value>hdfs://hive-metastore:8020</value>
     </property>
 
     <property>
         <name>fs.default.name</name>
-        <value>hdfs://hadoop-master:9000</value>
+        <value>hdfs://hive-metastore:9000</value>
     </property>
 
     <!-- OOZIE proxy user setting -->

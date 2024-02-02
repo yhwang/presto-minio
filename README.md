@@ -27,7 +27,7 @@ Once you have edited these files, proceed to edit the environment value for `mcj
 # Example
 First create a table in the Hive metastore. Note that the location `'s3a://customer-data-text/'` points to data that already exists in the Minio container.
 
-Run `docker exec -it hadoop-master /bin/bash`.
+Run `docker exec -it hive-metastore /bin/bash`.
 
 ```
 [root@hadoop-master /]# hive
