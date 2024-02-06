@@ -54,7 +54,5 @@ RUN chown hive:hive -R /opt && \
 USER hive
 
 EXPOSE 9083
-EXPOSE 10000
-EXPOSE 10002
 
 CMD ["sh", "-c", "/entrypoint.sh"]
