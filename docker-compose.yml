@@ -69,6 +69,7 @@ services:
       - '8080:8080'
     volumes:
       - './presto/catalog:/opt/presto-server/etc/catalog'
+      - './presto/config.properties:/opt/presto-server/etc/config.properties'
     depends_on:
       - metastore
 
