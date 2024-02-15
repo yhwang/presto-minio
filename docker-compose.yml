@@ -29,6 +29,15 @@ services:
       MYSQL_PASSWORD: admin
       MYSQL_DATABASE: metastore_db
 
+  mongo:
+    image: mongo:6.0.4
+    hostname: mongo
+    container_name: mongo
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-data:/data/db
+
   metastore:
     build: ./hive
     hostname: metastore
@@ -63,7 +72,7 @@ services:
 
   presto:
     hostname: presto
-    image: 'prestodb/presto:0.286-edge13'
+    image: 'prestodb/presto:0.287-edge2'
     container_name: presto
     ports:
       - '8080:8080'
@@ -72,8 +81,10 @@ services:
       - './presto/config.properties:/opt/presto-server/etc/config.properties'
     depends_on:
       - metastore
+      - mongo
 
 volumes:
   minio-data:
   mysql-data:
+  mongo-data:
   warehouse:
